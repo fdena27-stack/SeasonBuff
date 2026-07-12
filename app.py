@@ -7,10 +7,12 @@ import backup
 # Настройка страницы сайта
 st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
+# Безопасный триггер сессии для очистки при первом входе
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
     st.session_state["initialized"] = True
 
+# Инициализация переменных авторизации в сессии
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "username" not in st.session_state:
@@ -22,7 +24,13 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff")
+st.title("SeasonBuff_bot - Панель управления")
+
+# КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
+if st.button("Обновить списки"):
+    logic.clean_expired_buffs()
+    st.success("Данные успешно синхронизированы!")
+    st.rerun()
 
 # --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С ГЕНЕРАЦИЕЙ ID ---
 st.subheader("Авторизация")
@@ -56,7 +64,6 @@ if not st.session_state["logged_in"]:
             elif result == "wrong_password":
                 st.error("Ошибка: Данный ник зарезервирован! Введен неверный пароль.")
 else:
-    # ФИКС: Явно передали количество колонок (2) в функцию st.columns
     col_user, col_logout = st.columns(2)
     with col_user:
         if st.session_state["is_admin"]:
@@ -101,6 +108,7 @@ with col2:
             st.write(f"• **{item['user_name']}** — {days_left} дн.")
     else:
         st.write("*Пусто*")
+
 # --- БЛОК 3: ДЕЙСТВИЯ С ЗАПРОСАМИ ---
 if st.session_state["logged_in"] and current_user_name:
     st.write("---")
@@ -146,7 +154,7 @@ if st.session_state["logged_in"] and current_user_name:
         active_items = data[give_category_key]
         
         if not active_items:
-            st.info(f"В категории {give_cat_choice} сейчас нет активных запросов.")
+            st.info(f"В категории {give_cat_choice} сейчас нет active-запросов.")
         else:
             options = []
             for idx, item in enumerate(active_items):
@@ -182,19 +190,17 @@ st.download_button(
 )
 
 if is_admin_mode:
-    # ФИКС: Новый функционал смены паролей пользователям для админа
     st.write("---")
     st.write("**Управление аккаунтами пользователей:**")
     
     user_list = list(data["users"].keys())
-    # Убираем админа из списка, чтобы случайно не заблокировать самого себя
     if "FDA2876" in user_list: user_list.remove("FDA2876")
     
     if not user_list:
         st.info("В системе пока нет других зарегистрированных пользователей.")
     else:
         selected_user = st.selectbox("Выберите пользователя для изменения пароля:", options=user_list)
-        new_pass_input = st.text_input("Введите новый паро loyalty-пароль для этого пользователя:", type="password", key="admin_new_pass").strip()
+        new_pass_input = st.text_input("Введите новый пароль для этого пользователя:", type="password", key="admin_new_pass").strip()
         
         if st.button("Обновить пароль пользователя"):
             if len(new_pass_input) < 4:
@@ -220,5 +226,5 @@ if is_admin_mode:
         except Exception:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
-    if st.button("Загрузка в .TXT"):
+    if st.button("Загрузка в .TXT (Техническая зона)"):
         st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
