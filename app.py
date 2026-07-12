@@ -220,5 +220,5 @@ if is_admin_mode:
         except Exception:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
-    if st.button("Загрузка в .TXT (Техническая зона)"):
+    if st.button("Загрузка в .TXT"):
         st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
