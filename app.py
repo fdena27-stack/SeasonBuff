@@ -22,7 +22,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff_bot - Панель управления")
+st.title("SeasonBuff")
 
 # --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С ГЕНЕРАЦИЕЙ ID ---
 st.subheader("Авторизация")
