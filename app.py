@@ -5,7 +5,7 @@ import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff Web", layout="centered")
 
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
@@ -22,7 +22,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff_bot - Панель управления")
+st.title("SeasonBuff")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -190,7 +190,7 @@ fake_admin_id = 368060674 if is_admin_mode else 0
 txt_content = backup.export_to_txt(logic.clean_expired_buffs, fake_admin_id)
 
 st.download_button(
-    label="Выгрузить базу в .TXT",
+    label="Выгрузить в .TXT",
     data=txt_content,
     file_name="database.txt",
     mime="text/plain"
@@ -233,5 +233,5 @@ if is_admin_mode:
         except Exception:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
-    if st.button("Загрузка в .TXT (Техническая зона)"):
-        st.error("What раздел на реконструкции, архитектор забухал, бюджет кончился!")
+    if st.button("Загрузка из .TXT"):
+        st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
