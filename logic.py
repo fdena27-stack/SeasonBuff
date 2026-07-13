@@ -133,14 +133,23 @@ def remove_user_buff(category, user_id):
     return None
 
 def process_give_buff(category, index, percent_str, current_user_id, current_user_name):
-    """Логика выдачи баффа: теперь имя выдающего пишется в лог ВСЕГДА"""
+    """Логика выдачи баффа с жестким запретом на применение к самому себе"""
     clean_expired_buffs()
     data = load_lists()
     if index < 0 or index >= len(data[category]): return None
         
-    percent_value = int(percent_str.replace("%", ""))
     item = data[category][index]
     
+    # ФИКС: Проверка кражи баффа у самого себя. Если имя цели совпадает с именем текущего пользователя
+    if item["user_name"].lower().strip() == current_user_name.lower().strip():
+        time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+        # Записываем попытку само-баффа в журнал нарушений безопасности
+        log_text = f"[{time_stamp}] НАРУШЕНИЕ: Персонаж [{current_user_name}] пытался выдать бафф самому себе в категории {category.upper()}"
+        data["archive"].append(log_text)
+        save_lists(data)
+        return False
+        
+    percent_value = int(percent_str.replace("%", ""))
     old_duration = item["duration_days"]
     reduction = int((old_duration * percent_value / 100) + 0.99)
     if reduction == 0: reduction = 1
@@ -165,7 +174,6 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
     time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
     
-    # ФИКС: В базовый текст лога добавлено имя выдающего — [current_user_name]
     archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
     if is_user_in_lists:
         archive_log += f" (Также применилось к нему же как к выдающему в категории {category}: -{giver_reduction} дн.)"
