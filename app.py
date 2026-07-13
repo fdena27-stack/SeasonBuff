@@ -1,5 +1,6 @@
 import streamlit as st
-from datetime import datetime, timedelta, date  # Добавили импорт date
+import time  # Добавили импорт time для работы с секундами
+from datetime import datetime, timedelta
 import extra_streamlit_components as stx  # Менеджер Cookie
 import storage
 import logic
@@ -68,9 +69,11 @@ if not st.session_state["logged_in"]:
                 generated_id = logic.generate_web_user_id(input_user, input_pass)
                 pass_hash = logic.hash_password(input_pass)
                 
-                # ФИКС: Передаем только дату .date() без времени для совместимости со Streamlit Cloud
-                cookie_manager.set(key="sb_user", value=input_user, expires=date.today() + timedelta(days=30))
-                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=date.today() + timedelta(days=30))
+                # ФИКС: Высчитываем время окончания в секундах (текущее время + 30 дней)
+                expire_seconds = int(time.time() + 30 * 24 * 60 * 60)
+                
+                cookie_manager.set(key="sb_user", value=input_user, expires=expire_seconds)
+                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=expire_seconds)
                 
                 if input_user.lower() == "fda2876" or generated_id == 368060674:
                     st.session_state["user_id"] = 368060674
