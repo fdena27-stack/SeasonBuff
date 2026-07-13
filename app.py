@@ -1,7 +1,5 @@
 import streamlit as st
-import time  # Добавили импорт time для работы с секундами
 from datetime import datetime, timedelta
-import extra_streamlit_components as stx  # Менеджер Cookie
 import storage
 import logic
 import backup
@@ -9,13 +7,12 @@ import backup
 # Настройка страницы сайта
 st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
-# Инициализация менеджера Cookie
-cookie_manager = stx.CookieManager()
-
+# Безопасный триггер сессии для очистки при первом входе
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
     st.session_state["initialized"] = True
 
+# Инициализация переменных авторизации в сессии
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "username" not in st.session_state:
@@ -35,24 +32,7 @@ if st.button("Обновить списки"):
     st.success("Данные успешно синхронизированы!")
     st.rerun()
 
-# ЛОГИКА АВТО-ВХОДА ЧЕРЕЗ COOKIE
-saved_user = cookie_manager.get(cookie="sb_user")
-saved_pass_hash = cookie_manager.get(cookie="sb_pass_hash")
-
-if not st.session_state["logged_in"] and saved_user and saved_pass_hash:
-    if saved_user in data["users"] and data["users"][saved_user] == saved_pass_hash:
-        st.session_state["logged_in"] = True
-        st.session_state["username"] = saved_user
-        st.session_state["is_admin"] = (saved_user.lower() == "fda2876")
-        
-        if saved_user.lower() == "fda2876":
-            st.session_state["user_id"] = 368060674
-        else:
-            st.session_state["user_id"] = abs(hash(saved_user.lower())) % (10**8)
-            
-        st.rerun()
-
-# --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С СОХРАНЕНИЕМ COOKIE ---
+# --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С ГЕНЕРАЦИЕЙ ID ---
 st.subheader("Авторизация")
 
 if not st.session_state["logged_in"]:
@@ -67,13 +47,6 @@ if not st.session_state["logged_in"]:
             
             if result in ["reg_success", "auth_success"]:
                 generated_id = logic.generate_web_user_id(input_user, input_pass)
-                pass_hash = logic.hash_password(input_pass)
-                
-                # ФИКС: Высчитываем время окончания в секундах (текущее время + 30 дней)
-                expire_seconds = int(time.time() + 30 * 24 * 60 * 60)
-                
-                cookie_manager.set(key="sb_user", value=input_user, expires=expire_seconds)
-                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=expire_seconds)
                 
                 if input_user.lower() == "fda2876" or generated_id == 368060674:
                     st.session_state["user_id"] = 368060674
@@ -99,8 +72,6 @@ else:
             st.success(f"Персонаж: {st.session_state['username']} (ID: {st.session_state['user_id']})")
     with col_logout:
         if st.button("Выйти"):
-            cookie_manager.delete(key="sb_user")
-            cookie_manager.delete(key="sb_pass_hash")
             st.session_state["logged_in"] = False
             st.session_state["username"] = ""
             st.session_state["user_id"] = 0
