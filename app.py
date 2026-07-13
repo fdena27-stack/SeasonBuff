@@ -5,7 +5,7 @@ import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff Web", layout="centered")
 
 # Безопасный триггер сессии для очистки при первом входе
 if "initialized" not in st.session_state:
