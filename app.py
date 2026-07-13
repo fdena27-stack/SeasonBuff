@@ -5,14 +5,12 @@ import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
-# Безопасный триггер сессии для очистки при первом входе
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
     st.session_state["initialized"] = True
 
-# Инициализация переменных авторизации в сессии
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "username" not in st.session_state:
@@ -24,7 +22,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff")
+st.title("SeasonBuff_bot - Панель управления")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -150,29 +148,39 @@ if st.session_state["logged_in"] and current_user_name:
         give_cat_choice = st.radio("Выберите категорию для выдачи:", ["Стройка", "Лаборатория"], key="give_radio")
         give_category_key = "stroyka" if give_cat_choice == "Стройка" else "laboratoriya"
         
-        active_items = data[give_category_key]
+        # ФИКС: Перед отрисовкой меню выдачи проверяем персональный кулдаун игрока в этой категории
+        cooldown_status = logic.get_user_cooldown(give_category_key, current_user_name)
         
-        if not active_items:
-            st.info(f"В категории {give_cat_choice} сейчас нет active-запросов.")
+        if cooldown_status:
+            st.warning(f"Выдача заблокирована! Повторный бафф в категории {give_cat_choice} будет доступен через: {cooldown_status}")
         else:
-            options = []
-            for idx, item in enumerate(active_items):
-                end_date = datetime.fromisoformat(item["created_at"]) + timedelta(days=item["duration_days"])
-                days_left = (end_date - now).days + 1
-                options.append(f"{item['user_name']} ({days_left} дн.)")
+            active_items = data[give_category_key]
+            
+            if not active_items:
+                st.info(f"В категории {give_cat_choice} сейчас нет active-запросов.")
+            else:
+                options = []
+                for idx, item in enumerate(active_items):
+                    end_date = datetime.fromisoformat(item["created_at"]) + timedelta(days=item["duration_days"])
+                    days_left = (end_date - now).days + 1
+                    options.append(f"{item['user_name']} ({days_left} дн.)")
+                    
+                selected_target = st.selectbox("Кому выдать бафф?", options=options)
+                selected_index = options.index(selected_target)
                 
-            selected_target = st.selectbox("Кому выдать бафф?", options=options)
-            selected_index = options.index(selected_target)
-            
-            percent_choice = st.selectbox("На сколько ускорить?", options=["5%", "10%", "15%"])
-            
-            if st.button("Применить ускорение"):
-                buff_result = logic.process_give_buff(give_category_key, selected_index, percent_choice, current_user_id, current_user_name)
-                if buff_result:
-                    st.success(f"Результат: {buff_result}")
-                    st.rerun()
-                else:
-                    st.error("Ошибка проведения ускорения.")
+                percent_choice = st.selectbox("На сколько ускорить?", options=["5%", "10%", "15%"])
+                
+                if st.button("Применить ускорение"):
+                    buff_result = logic.process_give_buff(give_category_key, selected_index, percent_choice, current_user_id, current_user_name)
+                    if buff_result == "self_buff_error":
+                        st.error("Ошибка: Нельзя выдать бафф самому себе!")
+                    elif buff_result and buff_result.startswith("cooldown_active:"):
+                        st.error("Ошибка доступа: Кулдаун еще не завершен.")
+                    elif buff_result:
+                        st.success(f"Результат: {buff_result}")
+                        st.rerun()
+                    else:
+                        st.error("Ошибка проведения ускорения.")
 
 # --- БЛОК 4: АДМИНИСТРИРОВАНИЕ И БЭКАПЫ (ДЛЯ АДМИНА) ---
 st.write("---")
@@ -225,5 +233,5 @@ if is_admin_mode:
         except Exception:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
-    if st.button("Загрузка в .TXT"):
-        st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
+    if st.button("Загрузка в .TXT (Техническая зона)"):
+        st.error("What раздел на реконструкции, архитектор забухал, бюджет кончился!")
