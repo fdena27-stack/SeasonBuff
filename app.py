@@ -5,7 +5,7 @@ import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff Web", layout="centered")
 
 # Безопасный триггер сессии для очистки при первом входе
 if "initialized" not in st.session_state:
@@ -24,7 +24,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff_bot - Панель управления")
+st.title("SeasonBuff")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
