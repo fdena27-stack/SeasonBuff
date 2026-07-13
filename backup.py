@@ -32,11 +32,10 @@ def export_to_txt(clean_callback, user_id):
         lines.append(f"{i+1}. {x}")
     if not buff_logs: lines.append("Пусто")
 
-    # ФИКС: Эти два журнала добавляются в файл только для администратора с ID 368060674
     if int(user_id) == 368060674:
         lines.append("")
         lines.append("======= ЖУРНАЛ СОБЫТИЙ СИСТЕМЫ =======")
-        system_logs = [x for x in data.get("archive", []) if "РЕГИСТРАЦИЯ" in x or "ПЕРЕИМЕНОВАНИЕ" in x]
+        system_logs = [x for x in data.get("archive", []) if "РЕГИСТРАЦИЯ" in x or "ПЕРЕИМЕНОВАНИЕ" in x or "АВТО" in x]
         for i, x in enumerate(system_logs):
             lines.append(f"{i+1}. {x}")
         if not system_logs: lines.append("Пусто")
@@ -66,7 +65,19 @@ def export_to_txt(clean_callback, user_id):
     return "\n".join(lines)
 
 def import_from_txt(content):
-    data = {"users": {}, "stroyka": [], "laboratoriya": [], "archive": []}
+    """Парсит только нижнюю часть файла 'ДЛЯ ЗАГРУЗКИ', сохраняя текущих пользователей и их пароли"""
+    # ФИКС: Сначала загружаем текущую базу данных, чтобы вытащить оттуда пользователей и откаты
+    current_data = load_lists()
+    
+    # Переносим существующих пользователей и кулдауны в новый объект, очищая только списки баффов и архивы
+    data = {
+        "users": current_data.get("users", {}),
+        "cooldowns": current_data.get("cooldowns", {}),
+        "stroyka": [],
+        "laboratoriya": [],
+        "archive": []
+    }
+    
     current_section = None
     in_upload_zone = False
     now_str = datetime.now().isoformat()
@@ -107,4 +118,3 @@ def import_from_txt(content):
                     })
                     
     save_lists(data)
-
