@@ -81,18 +81,15 @@ def verify_or_register_user(username, password):
         return "reg_success"
 
 def admin_reset_user_password(target_username, new_password):
-    """ФИКС: Позволяет админу принудительно переписать пароль любого пользователя"""
+    """Позволяет админу принудительно переписать пароль любого пользователя"""
     data = load_lists()
     time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
     
     if target_username in data["users"]:
         new_hash = hash_password(new_password)
         data["users"][target_username] = new_hash
-        
-        # Записываем это административное действие в скрытый журнал безопасности
         log_text = f"[{time_stamp}] АДМИН-ДЕЙСТВИЕ: Администратор принудительно изменил пароль пользователю [{target_username}]"
         data["archive"].append(log_text)
-        
         save_lists(data)
         return True
     return False
@@ -136,6 +133,7 @@ def remove_user_buff(category, user_id):
     return None
 
 def process_give_buff(category, index, percent_str, current_user_id, current_user_name):
+    """Логика выдачи баффа: теперь имя выдающего пишется в лог ВСЕГДА"""
     clean_expired_buffs()
     data = load_lists()
     if index < 0 or index >= len(data[category]): return None
@@ -167,9 +165,10 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
     time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
     
-    archive_log = f"[{time_stamp}] Ускорение {percent_str} для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
+    # ФИКС: В базовый текст лога добавлено имя выдающего — [current_user_name]
+    archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
     if is_user_in_lists:
-        archive_log += f" (Также применилось к выдающему [{current_user_name}] (ID: {current_user_id}) в категории {category}: -{giver_reduction} дн.)"
+        archive_log += f" (Также применилось к нему же как к выдающему в категории {category}: -{giver_reduction} дн.)"
         
     data["archive"].append(archive_log)
     save_lists(data)
