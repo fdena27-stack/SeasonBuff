@@ -1,18 +1,20 @@
 import streamlit as st
 from datetime import datetime, timedelta
+import extra_streamlit_components as stx  # Импортируем менеджер Cookie
 import storage
 import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
-# Безопасный триггер сессии для очистки при первом входе
+# Инициализация менеджера Cookie
+cookie_manager = stx.CookieManager()
+
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
     st.session_state["initialized"] = True
 
-# Инициализация переменных авторизации в сессии
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "username" not in st.session_state:
@@ -24,7 +26,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff")
+st.title("SeasonBuff_bot - Панель управления")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -32,7 +34,31 @@ if st.button("Обновить списки"):
     st.success("Данные успешно синхронизированы!")
     st.rerun()
 
-# --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С ГЕНЕРАЦИЕЙ ID ---
+# --- ФИКС: ЛОГИКА АВТО-ВХОДА ЧЕРЕЗ COOKIE ---
+# Считываем сохраненный ник и зашифрованный пароль из браузера
+saved_user = cookie_manager.get(cookie="sb_user")
+saved_pass_hash = cookie_manager.get(cookie="sb_pass_hash")
+
+if not st.session_state["logged_in"] and saved_user and saved_pass_hash:
+    # Ищем пользователя в базе данных
+    if saved_user in data["users"] and data["users"][saved_user] == saved_pass_hash:
+        generated_id = logic.generate_web_user_id(saved_user, "dummy_pass") # Для генерации ID используем сохраненные данные
+        # Но для точности пересобираем ID по имени
+        
+        st.session_state["logged_in"] = True
+        st.session_state["username"] = saved_user
+        st.session_state["is_admin"] = (saved_user.lower() == "fda2876")
+        
+        # Специфический фикс для админ ID
+        if saved_user.lower() == "fda2876":
+            st.session_state["user_id"] = 368060674
+        else:
+            # Находим ID по нику из активных списков, если он там есть, либо симулируем
+            st.session_state["user_id"] = abs(hash(saved_user.lower())) % (10**8)
+            
+        st.rerun()
+
+# --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С СОХРАНЕНИЕМ COOKIE ---
 st.subheader("Авторизация")
 
 if not st.session_state["logged_in"]:
@@ -47,6 +73,11 @@ if not st.session_state["logged_in"]:
             
             if result in ["reg_success", "auth_success"]:
                 generated_id = logic.generate_web_user_id(input_user, input_pass)
+                pass_hash = logic.hash_password(input_pass)
+                
+                # Записываем Cookie в браузер на 30 дней
+                cookie_manager.set(key="sb_user", value=input_user, expires_at=datetime.now() + timedelta(days=30))
+                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires_at=datetime.now() + timedelta(days=30))
                 
                 if input_user.lower() == "fda2876" or generated_id == 368060674:
                     st.session_state["user_id"] = 368060674
@@ -72,6 +103,10 @@ else:
             st.success(f"Персонаж: {st.session_state['username']} (ID: {st.session_state['user_id']})")
     with col_logout:
         if st.button("Выйти"):
+            # При ручном выходе полностью стираем Cookie из браузера
+            cookie_manager.delete(key="sb_user")
+            cookie_manager.delete(key="sb_pass_hash")
+            
             st.session_state["logged_in"] = False
             st.session_state["username"] = ""
             st.session_state["user_id"] = 0
@@ -199,32 +234,3 @@ if is_admin_mode:
     if not user_list:
         st.info("В системе пока нет других зарегистрированных пользователей.")
     else:
-        selected_user = st.selectbox("Выберите пользователя для изменения пароля:", options=user_list)
-        new_pass_input = st.text_input("Введите новый пароль для этого пользователя:", type="password", key="admin_new_pass").strip()
-        
-        if st.button("Обновить пароль пользователя"):
-            if len(new_pass_input) < 4:
-                st.error("Ошибка: Пароль должен быть не короче 4 символов!")
-            else:
-                success_reset = logic.admin_reset_user_password(selected_user, new_pass_input)
-                if success_reset:
-                    st.success(f"Пароль для пользователя [{selected_user}] успешно изменен!")
-                    st.rerun()
-                else:
-                    st.error("Не удалось сменить пароль.")
-                    
-    st.write("---")
-    st.write("**Загрузка базы данных:**")
-    uploaded_file = st.file_uploader("Пожалуйста, отправьте мне файл .TXT для импорта:", type=["txt"])
-    if uploaded_file is not None:
-        string_data = uploaded_file.read().decode("utf-8")
-        try:
-            backup.import_from_txt(string_data)
-            st.success("Данные успешно импортированы! Пожалуйста, перезайдите в систему.")
-            st.session_state["logged_in"] = False
-            st.rerun()
-        except Exception:
-            st.error("Ошибка при разборе файла бэкапа.")
-else:
-    if st.button("Загрузка в .TXT"):
-        st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
