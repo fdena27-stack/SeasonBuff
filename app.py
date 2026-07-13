@@ -1,12 +1,12 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date  # Добавили импорт date
 import extra_streamlit_components as stx  # Менеджер Cookie
 import storage
 import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
 # Инициализация менеджера Cookie
 cookie_manager = stx.CookieManager()
@@ -26,7 +26,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff_bot")
+st.title("SeasonBuff_bot - Панель управления")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -68,9 +68,9 @@ if not st.session_state["logged_in"]:
                 generated_id = logic.generate_web_user_id(input_user, input_pass)
                 pass_hash = logic.hash_password(input_pass)
                 
-                # ФИКС: Исправлено имя аргумента на "expires" + передаем дату окончания
-                cookie_manager.set(key="sb_user", value=input_user, expires=datetime.now() + timedelta(days=30))
-                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=datetime.now() + timedelta(days=30))
+                # ФИКС: Передаем только дату .date() без времени для совместимости со Streamlit Cloud
+                cookie_manager.set(key="sb_user", value=input_user, expires=date.today() + timedelta(days=30))
+                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=date.today() + timedelta(days=30))
                 
                 if input_user.lower() == "fda2876" or generated_id == 368060674:
                     st.session_state["user_id"] = 368060674
@@ -252,5 +252,4 @@ if is_admin_mode:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
     if st.button("Загрузка в .TXT (Техническая зона)"):
-        st.error("Pаздел на реконструкции, архитектор забухал, бюджет кончился!")
-
+        st.error("What раздел на реконструкции, архитектор забухал, бюджет кончился!")
