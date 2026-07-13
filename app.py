@@ -26,7 +26,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff")
+st.title("SeasonBuff_bot")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -68,9 +68,9 @@ if not st.session_state["logged_in"]:
                 generated_id = logic.generate_web_user_id(input_user, input_pass)
                 pass_hash = logic.hash_password(input_pass)
                 
-                # Записываем Cookie в браузер на 30 дней
-                cookie_manager.set(key="sb_user", value=input_user, expires_at=datetime.now() + timedelta(days=30))
-                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires_at=datetime.now() + timedelta(days=30))
+                # ФИКС: Исправлено имя аргумента на "expires" + передаем дату окончания
+                cookie_manager.set(key="sb_user", value=input_user, expires=datetime.now() + timedelta(days=30))
+                cookie_manager.set(key="sb_pass_hash", value=pass_hash, expires=datetime.now() + timedelta(days=30))
                 
                 if input_user.lower() == "fda2876" or generated_id == 368060674:
                     st.session_state["user_id"] = 368060674
@@ -252,4 +252,5 @@ if is_admin_mode:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
     if st.button("Загрузка в .TXT (Техническая зона)"):
-        st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
+        st.error("Pаздел на реконструкции, архитектор забухал, бюджет кончился!")
+
