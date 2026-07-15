@@ -1,17 +1,8 @@
 import json
 import os
 
-# Проверяем, запущен ли бот на сервере Amvera
-if os.path.exists("/data") or os.environ.get("AMVERA_APP_ID"):
-    # Если папки /data физически еще нет в контейнере, принудительно создаем ее
-    if not os.path.exists("/data"):
-        try:
-            os.makedirs("/data", exist_ok=True)
-        except Exception:
-            pass
-    JSON_FILE = "/data/lists.json"  # Строго в постоянное хранилище Amvera
-else:
-    JSON_FILE = "lists.json"        # Локально на вашем ПК
+# Фиксируем строгий абсолютный путь по умолчанию для хостинга Amvera
+JSON_FILE = "/data/lists.json"
 
 def load_lists():
     if not os.path.exists(JSON_FILE):
