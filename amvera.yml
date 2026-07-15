@@ -2,12 +2,8 @@ meta:
   environment: python
   toolchain:
     name: pip
-    version: "3.11"
+    version: 3.11
 build:
-  requirementsPath: requirements.txt
-  useCache: true
+  requirements: requirements.txt
 run:
-  scriptName: app.py
-  command: null
-  persistenceMount: /data
-  containerPort: "80"
+  command: streamlit run app.py --server.port 80 --server.address 0.0.0.0
