@@ -51,19 +51,34 @@ def generate_web_user_id(username, password):
     return abs(hash(combined)) % (10**8)
 
 def sync_web_user_id_by_name(user_id, char_name):
-    """ФИКС: Автоматически привязывает сгенерированный веб-ID к загруженным из файла баффам, заменяя 0"""
+    """Автоматически привязывает сгенерированный веб-ID к загруженным из файла баффам, заменяя 0"""
     data = load_lists()
     updated = False
     name_lower = char_name.lower().strip()
     
     for category in ["stroyka", "laboratoriya"]:
         for item in data[category]:
-            # Если имя совпало, а id равен 0 (запись только что импортирована), привязываем сгенерированный ID
             if item["user_name"].lower().strip() == name_lower and item["user_id"] == 0:
                 item["user_id"] = user_id
                 updated = True
     if updated:
         save_lists(data)
+
+def get_user_cooldown(category, username):
+    """ФИКС: Возвращена функция проверки 36-часового отката для выдачи баффов"""
+    data = load_lists()
+    cooldowns = data.get("cooldowns", {})
+    user_key = username.lower().strip()
+    
+    if category in cooldowns and user_key in cooldowns[category]:
+        last_give_time = datetime.fromisoformat(cooldowns[category][user_key])
+        time_passed = datetime.now() - last_give_time
+        remaining_seconds = 36 * 3600 - time_passed.total_seconds()
+        if remaining_seconds > 0:
+            hours = int(remaining_seconds // 3600)
+            minutes = int((remaining_seconds % 3600) // 60)
+            return f"{hours} ч. {minutes} мин."
+    return None
 
 def verify_or_register_user(username, password):
     """Проверяет пароль существующего или регистрирует нового пользователя"""
@@ -82,7 +97,6 @@ def verify_or_register_user(username, password):
     
     if existing_user_key:
         if data["users"][existing_user_key] == p_hash:
-            # Находим сгенерированный ID для успешного входа и запускаем синхронизацию
             uid = generate_web_user_id(existing_user_key, password)
             sync_web_user_id_by_name(uid, existing_user_key)
             return "auth_success"
@@ -92,13 +106,11 @@ def verify_or_register_user(username, password):
             save_lists(data)
             return "wrong_password"
     else:
-        # Регистрация нового пользователя
         data["users"][name_key] = p_hash
         log_text = f"[{time_stamp}] РЕГИСТРАЦИЯ: Создан новый аккаунт персонажа [{name_key}]"
         data["archive"].append(log_text)
         save_lists(data)
         
-        # Сразу после регистрации привязываем ID к записям, если этот ник уже был загружен админом из бэкапа
         uid = generate_web_user_id(name_key, password)
         sync_web_user_id_by_name(uid, name_key)
         return "reg_success"
@@ -115,7 +127,6 @@ def admin_reset_user_password(target_username, new_password):
         data["archive"].append(log_text)
         save_lists(data)
         
-        # После сброса пароля админом пересчитываем новый ID и синхронизируем списки
         new_uid = generate_web_user_id(target_username, new_password)
         sync_web_user_id_by_name(new_uid, target_username)
         return True
@@ -160,18 +171,28 @@ def remove_user_buff(category, user_id):
     return None
 
 def process_give_buff(category, index, percent_str, current_user_id, current_user_name):
+    """Логика выдачи баффа с проверкой отката в 36 часов отдельно для каждой категории"""
     clean_expired_buffs()
     data = load_lists()
+    time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    # Проверяем откат выдающего игрока
+    cd_check = get_user_cooldown(category, current_user_name)
+    if cd_check:
+        log_text = f"[{time_stamp}] ОШИБКА ДОСТУПА: Персонаж [{current_user_name}] пытался обойти откат в категории {category.upper()}"
+        data["archive"].append(log_text)
+        save_lists(data)
+        return f"cooldown_active:{cd_check}"
+
     if index < 0 or index >= len(data[category]): return None
-        
     item = data[category][index]
     
+    # Проверка само-баффа
     if item["user_name"].lower().strip() == current_user_name.lower().strip():
-        time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
         log_text = f"[{time_stamp}] НАРУШЕНИЕ: Персонаж [{current_user_name}] пытался выдать бафф самому себе в категории {category.upper()}"
         data["archive"].append(log_text)
         save_lists(data)
-        return False
+        return "self_buff_error"
         
     percent_value = int(percent_str.replace("%", ""))
     old_duration = item["duration_days"]
@@ -196,7 +217,14 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
             break
                 
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
-    time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+    
+    # Сохраняем время успешной выдачи в ячейку откатов (cooldowns)
+    if "cooldowns" not in data:
+        data["cooldowns"] = {}
+    if category not in data["cooldowns"]:
+        data["cooldowns"][category] = {}
+        
+    data["cooldowns"][category][c_name_lower] = datetime.now().isoformat()
     
     archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
     if is_user_in_lists:
