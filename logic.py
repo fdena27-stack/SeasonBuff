@@ -65,7 +65,7 @@ def sync_web_user_id_by_name(user_id, char_name):
         save_lists(data)
 
 def get_user_cooldown(category, username):
-    """ФИКС: Возвращена функция проверки 36-часового отката для выдачи баффов"""
+    """Расчет кулдауна переведен строго на 48 часов"""
     data = load_lists()
     cooldowns = data.get("cooldowns", {})
     user_key = username.lower().strip()
@@ -73,7 +73,7 @@ def get_user_cooldown(category, username):
     if category in cooldowns and user_key in cooldowns[category]:
         last_give_time = datetime.fromisoformat(cooldowns[category][user_key])
         time_passed = datetime.now() - last_give_time
-        remaining_seconds = 36 * 3600 - time_passed.total_seconds()
+        remaining_seconds = 48 * 3600 - time_passed.total_seconds()
         if remaining_seconds > 0:
             hours = int(remaining_seconds // 3600)
             minutes = int((remaining_seconds % 3600) // 60)
@@ -171,28 +171,28 @@ def remove_user_buff(category, user_id):
     return None
 
 def process_give_buff(category, index, percent_str, current_user_id, current_user_name):
-    """Логика выдачи баффа с проверкой отката в 36 часов отдельно для каждой категории"""
+    """Логика выдачи баффа с фиксацией категории в основном тексте лога"""
     clean_expired_buffs()
     data = load_lists()
-    time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
-    
-    # Проверяем откат выдающего игрока
-    cd_check = get_user_cooldown(category, current_user_name)
-    if cd_check:
-        log_text = f"[{time_stamp}] ОШИБКА ДОСТУПА: Персонаж [{current_user_name}] пытался обойти откат в категории {category.upper()}"
-        data["archive"].append(log_text)
-        save_lists(data)
-        return f"cooldown_active:{cd_check}"
-
     if index < 0 or index >= len(data[category]): return None
+        
     item = data[category][index]
     
-    # Проверка само-баффа
     if item["user_name"].lower().strip() == current_user_name.lower().strip():
+        time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
         log_text = f"[{time_stamp}] НАРУШЕНИЕ: Персонаж [{current_user_name}] пытался выдать бафф самому себе в категории {category.upper()}"
         data["archive"].append(log_text)
         save_lists(data)
         return "self_buff_error"
+        
+    # Проверяем откат выдающего игрока
+    cd_check = get_user_cooldown(category, current_user_name)
+    if cd_check:
+        time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+        log_text = f"[{time_stamp}] ОШИБКА ДОСТУПА: Персонаж [{current_user_name}] пытался обойти откат в категории {category.upper()}"
+        data["archive"].append(log_text)
+        save_lists(data)
+        return f"cooldown_active:{cd_check}"
         
     percent_value = int(percent_str.replace("%", ""))
     old_duration = item["duration_days"]
@@ -217,20 +217,22 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
             break
                 
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
+    time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
     
-    # Сохраняем время успешной выдачи в ячейку откатов (cooldowns)
+    # ФИКС: Явно переводим ключ категории в читаемый русский текст для основного лога
+    cat_title_ru = "СТРОЙКА" if category == "stroyka" else "ЛАБОРАТОРИЯ"
+    
+    # Добавили [{cat_title_ru}] в текст лога для однозначности
+    archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} в категории [{cat_title_ru}] для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
+    if is_user_in_lists:
+        archive_log += f" (Также применилось к нему же как к выдающему: -{giver_reduction} дн.)"
+        
     if "cooldowns" not in data:
         data["cooldowns"] = {}
     if category not in data["cooldowns"]:
         data["cooldowns"][category] = {}
-        
     data["cooldowns"][category][c_name_lower] = datetime.now().isoformat()
-    
-    archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
-    if is_user_in_lists:
-        archive_log += f" (Также применилось к нему же как к выдающему в категории {category}: -{giver_reduction} дн.)"
         
     data["archive"].append(archive_log)
     save_lists(data)
     clean_expired_buffs()
-    return buff_result_text
