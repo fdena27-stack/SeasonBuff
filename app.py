@@ -125,7 +125,7 @@ if st.session_state["logged_in"] and current_user_name:
                 
         if not has_active_request:
             st.write("**Создать запрос:**")
-            duration_input = st.number_input("Введите срок действия баффа в днях (строго больше 7):", min_value=1, value=90, step=1)
+            duration_input = st.number_input("Введите срок:", min_value=1, value=90, step=1)
             if st.button("Создать запрос"):
                 success = logic.add_buff_request(category_key, current_user_id, current_user_name, f"Запрос баффа на {cat_choice}", duration_input)
                 if success:
