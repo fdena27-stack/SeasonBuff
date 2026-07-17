@@ -5,7 +5,7 @@ import logic
 import backup
 
 # Настройка страницы сайта
-st.set_page_config(page_title="SeasonBuff Web", layout="centered")
+st.set_page_config(page_title="SeasonBuff_bot Web", layout="centered")
 
 if "initialized" not in st.session_state:
     logic.clean_expired_buffs()
@@ -22,7 +22,7 @@ if "is_admin" not in st.session_state:
 
 data = storage.load_lists()
 
-st.title("SeasonBuff")
+st.title("SeasonBuff Web")
 
 # КНОПКА АКТУАЛИЗАЦИИ: обновляет данные без сброса авторизации
 if st.button("Обновить списки"):
@@ -30,7 +30,7 @@ if st.button("Обновить списки"):
     st.success("Данные успешно синхронизированы!")
     st.rerun()
 
-# --- БЛОК 1: ВЕБ-АВТОРИЗАЦИЯ С ГЕНЕРАЦИЕЙ ID ---
+# --- БЛОК 1: СТРОГАЯ ВЕБ-АВТОРИЗАЦИЯ ОДНИМ ОКНОМ ---
 st.subheader("Авторизация")
 
 if not st.session_state["logged_in"]:
@@ -148,7 +148,6 @@ if st.session_state["logged_in"] and current_user_name:
         give_cat_choice = st.radio("Выберите категорию для выдачи:", ["Стройка", "Лаборатория"], key="give_radio")
         give_category_key = "stroyka" if give_cat_choice == "Стройка" else "laboratoriya"
         
-        # ФИКС: Перед отрисовкой меню выдачи проверяем персональный кулдаун игрока в этой категории
         cooldown_status = logic.get_user_cooldown(give_category_key, current_user_name)
         
         if cooldown_status:
@@ -190,7 +189,7 @@ fake_admin_id = 368060674 if is_admin_mode else 0
 txt_content = backup.export_to_txt(logic.clean_expired_buffs, fake_admin_id)
 
 st.download_button(
-    label="Выгрузить в .TXT",
+    label="Выгрузить базу в .TXT",
     data=txt_content,
     file_name="database.txt",
     mime="text/plain"
@@ -233,5 +232,5 @@ if is_admin_mode:
         except Exception:
             st.error("Ошибка при разборе файла бэкапа.")
 else:
-    if st.button("Загрузка из .TXT"):
-        st.error("Раздел на реконструкции, архитектор забухал, бюджет кончился!")
+    if st.button("Загрузка"):
+        st.error("Pаздел на реконструкции, архитектор забухал, бюджет кончился!")
