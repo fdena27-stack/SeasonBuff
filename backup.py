@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from storage import load_lists, save_lists
 
 def export_to_txt(clean_callback, user_id):
-    """Генерирует расширенное содержимое файла с сохранением оригинальных дат для импорта"""
+    """Генерирует расширенное содержимое файла с глубокой фильтрацией журналов для суперадмина"""
     clean_callback()
     data = load_lists()
     now = datetime.now()
@@ -25,6 +25,7 @@ def export_to_txt(clean_callback, user_id):
         lines.append(f"• {item['user_name']} — {days_left} дн.")
     if not data["laboratoriya"]: lines.append("Пусто")
 
+    # Раздел 1: Только ручные ускорения игроков
     lines.append("")
     lines.append("АРХИВ ЛОГОВ УСКОРЕНИЙ:")
     buff_logs = [x for x in data.get("archive", []) if "Ускорение" in x]
@@ -32,22 +33,31 @@ def export_to_txt(clean_callback, user_id):
         lines.append(f"{i+1}. {x}")
     if not buff_logs: lines.append("Пусто")
 
+    # Скрытые разделы безопасности — доступны строго для вашего ID 368060674
     if int(user_id) == 368060674:
+        # Раздел 2: Регистрации, переименования, авто-обновления и авто-удаления времени
         lines.append("")
         lines.append("======= ЖУРНАЛ СОБЫТИЙ СИСТЕМЫ =======")
-        system_logs = [x for x in data.get("archive", []) if "РЕГИСТРАЦИЯ" in x or "ПЕРЕИМЕНОВАНИЕ" in x or "АВТО" in x]
+        system_logs = [
+            x for x in data.get("archive", []) 
+            if "РЕГИСТРАЦИЯ" in x or "ПЕРЕИМЕНОВАНИЕ" in x or "АВТО-ОБНОВЛЕНИЕ" in x or "АВТО-УДАЛЕНИЕ" in x or "АДМИН-ДЕЙСТВИЕ" in x
+        ]
         for i, x in enumerate(system_logs):
             lines.append(f"{i+1}. {x}")
         if not system_logs: lines.append("Пусто")
 
+        # Раздел 3: Попытки подбора паролей, само-баффы и дубликаты
         lines.append("")
         lines.append("======= ЖУРНАЛ НАРУШЕНИЙ БЕЗОПАСНОСТИ =======")
-        security_logs = [x for x in data.get("archive", []) if "НАРУШЕНИЕ" in x]
+        security_logs = [
+            x for x in data.get("archive", []) 
+            if "НАРУШЕНИЕ" in x or "ОШИБКА ДОСТУПА" in x
+        ]
         for i, x in enumerate(security_logs):
             lines.append(f"{i+1}. {x}")
         if not security_logs: lines.append("Пусто")
         
-    # ФИКС: В блок загрузки теперь пишется полный технический слепок: Ник Срок Создан Обновлен
+    # Блок технической загрузки с оригинальными датами
     lines.append("")
     lines.append("======= ДЛЯ ЗАГРУЗКИ =======")
     lines.append("--- СТРОЙКА ---")
@@ -62,7 +72,7 @@ def export_to_txt(clean_callback, user_id):
     return "\n".join(lines)
 
 def import_from_txt(content):
-    """Парсит расширенные строки, восстанавливая оригинальные даты создания и обновлений"""
+    """Парсит только нижнюю часть файла 'ДЛЯ ЗАГРУЗКИ', сохраняя текущих пользователей и их пароли"""
     current_data = load_lists()
     
     data = {
@@ -70,7 +80,7 @@ def import_from_txt(content):
         "cooldowns": current_data.get("cooldowns", {}),
         "stroyka": [],
         "laboratoriya": [],
-        "archive": []
+        "archive": current_data.get("archive", [])  # ФИКС: Сохраняем прошлую историю логов при импорте, а не зануляем её
     }
     
     current_section = None
@@ -94,7 +104,6 @@ def import_from_txt(content):
             continue
             
         if current_section in ["stroyka", "laboratoriya"]:
-            # Проверяем новый формат импорта с разделителями "|"
             if "|" in line:
                 parts = [p.strip() for p in line.split("|")]
                 if len(parts) == 4:
@@ -109,11 +118,10 @@ def import_from_txt(content):
                         "user_name": user_name,
                         "text": f"Запрос баффа на {cat_name_ru}",
                         "duration_days": duration_days,
-                        "created_at": created_at,    # Восстанавливаем оригинальную дату создания
-                        "last_updated": last_updated  # Восстанавливаем оригинальную дату обновления
+                        "created_at": created_at,    
+                        "last_updated": last_updated  
                     })
             else:
-                # Старый формат (на случай, если загружается старый бэкап без дат)
                 if " " in line:
                     parts = line.rsplit(" ", 1)
                     user_name = parts[0].strip()
