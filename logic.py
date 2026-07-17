@@ -79,7 +79,6 @@ def get_user_cooldown(category, username):
             minutes = int((remaining_seconds % 3600) // 60)
             return f"{hours} ч. {minutes} мин."
     return None
-
 def verify_or_register_user(username, password):
     """Проверяет пароль существующего или регистрирует нового пользователя"""
     data = load_lists()
@@ -157,21 +156,31 @@ def add_buff_request(category, user_id, user_name, text, duration_days):
         "created_at": now_str, 
         "last_updated": now_str
     })
+    
+    log_success_add = f"[{time_stamp}] ЗАПРОС-СОЗДАН: Персонаж [{user_name}] (ID: {user_id}) создал запрос баффа в {cat_title} на {duration_days} дн."
+    data["archive"].append(log_success_add)
+    
     save_lists(data)
     return True
 
 def remove_user_buff(category, user_id):
     clean_expired_buffs()
     data = load_lists()
+    time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+    cat_title = "СТРОЙКА" if category == "stroyka" else "ЛАБОРАТОРИЯ"
+    
     for index, item in enumerate(data[category]):
         if item["user_id"] == user_id:
             removed = data[category].pop(index)
+            
+            log_success_del = f"[{time_stamp}] ЗАПРОС-УДАЛЕН: Персонаж [{removed['user_name']}] (ID: {user_id}) удалил свой запрос в категории {cat_title} (Оставалось срок: {removed['duration_days']} дн.)"
+            data["archive"].append(log_success_del)
+            
             save_lists(data)
             return removed
     return None
 
 def process_give_buff(category, index, percent_str, current_user_id, current_user_name):
-    """Логика выдачи баффа с фиксацией категории в основном тексте лога"""
     clean_expired_buffs()
     data = load_lists()
     if index < 0 or index >= len(data[category]): return None
@@ -185,7 +194,6 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
         save_lists(data)
         return "self_buff_error"
         
-    # Проверяем откат выдающего игрока
     cd_check = get_user_cooldown(category, current_user_name)
     if cd_check:
         time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
@@ -219,10 +227,8 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
     time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
     
-    # ФИКС: Явно переводим ключ категории в читаемый русский текст для основного лога
     cat_title_ru = "СТРОЙКА" if category == "stroyka" else "ЛАБОРАТОРИЯ"
     
-    # Добавили [{cat_title_ru}] в текст лога для однозначности
     archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} в категории [{cat_title_ru}] для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
     if is_user_in_lists:
         archive_log += f" (Также применилось к нему же как к выдающему: -{giver_reduction} дн.)"
@@ -236,3 +242,4 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
     data["archive"].append(archive_log)
     save_lists(data)
     clean_expired_buffs()
+    return buff_result_text
