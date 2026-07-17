@@ -149,17 +149,11 @@ def add_buff_request(category, user_id, user_name, text, duration_days):
     
     now_str = datetime.now().isoformat()
     data[category].append({
-        "user_id": user_id, 
-        "user_name": user_name,
-        "text": text,
-        "duration_days": duration_days, 
-        "created_at": now_str, 
-        "last_updated": now_str
+        "user_id": user_id, "user_name": user_name, "text": text,
+        "duration_days": duration_days, "created_at": now_str, "last_updated": now_str
     })
-    
     log_success_add = f"[{time_stamp}] ЗАПРОС-СОЗДАН: Персонаж [{user_name}] (ID: {user_id}) создал запрос баффа в {cat_title} на {duration_days} дн."
     data["archive"].append(log_success_add)
-    
     save_lists(data)
     return True
 
@@ -172,10 +166,8 @@ def remove_user_buff(category, user_id):
     for index, item in enumerate(data[category]):
         if item["user_id"] == user_id:
             removed = data[category].pop(index)
-            
             log_success_del = f"[{time_stamp}] ЗАПРОС-УДАЛЕН: Персонаж [{removed['user_name']}] (ID: {user_id}) удалил свой запрос в категории {cat_title} (Оставалось срок: {removed['duration_days']} дн.)"
             data["archive"].append(log_success_del)
-            
             save_lists(data)
             return removed
     return None
@@ -184,7 +176,6 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
     clean_expired_buffs()
     data = load_lists()
     if index < 0 or index >= len(data[category]): return None
-        
     item = data[category][index]
     
     if item["user_name"].lower().strip() == current_user_name.lower().strip():
@@ -226,7 +217,6 @@ def process_give_buff(category, index, percent_str, current_user_id, current_use
                 
     buff_result_text = f"Ускорение {percent_str} - {item['user_name']}"
     time_stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
-    
     cat_title_ru = "СТРОЙКА" if category == "stroyka" else "ЛАБОРАТОРИЯ"
     
     archive_log = f"[{time_stamp}] Игрок [{current_user_name}] применил Ускорение {percent_str} в категории [{cat_title_ru}] для [{item['user_name']}] (-{reduction} дн.). Новый срок: {item['duration_days']} дн."
