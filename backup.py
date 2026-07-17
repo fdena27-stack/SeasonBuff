@@ -25,7 +25,7 @@ def export_to_txt(clean_callback, user_id):
         lines.append(f"• {item['user_name']} — {days_left} дн.")
     if not data["laboratoriya"]: lines.append("Пусто")
 
-    # Раздел 1: Только ручные ускорения игроков
+    # Раздел 1: Ручные ускорения игроков
     lines.append("")
     lines.append("АРХИВ ЛОГОВ УСКОРЕНИЙ:")
     buff_logs = [x for x in data.get("archive", []) if "Ускорение" in x]
@@ -35,13 +35,15 @@ def export_to_txt(clean_callback, user_id):
 
     # Скрытые разделы безопасности — доступны строго для вашего ID 368060674
     if int(user_id) == 368060674:
-        # Раздел 2: Регистрации, переименования, авто-обновления и авто-удаления времени
+        # Раздел 2: Регистрации, переименования, авто-обновления, авто-удаления, создания и удаления строк
         lines.append("")
         lines.append("======= ЖУРНАЛ СОБЫТИЙ СИСТЕМЫ =======")
-        system_logs = [
-            x for x in data.get("archive", []) 
-            if "РЕГИСТРАЦИЯ" in x or "ПЕРЕИМЕНОВАНИЕ" in x or "АВТО-ОБНОВЛЕНИЕ" in x or "АВТО-УДАЛЕНИЕ" in x or "АДМИН-ДЕЙСТВИЕ" in x
-        ]
+        system_logs = []
+        for x in data.get("archive", []):
+            # ФИКС: Прямая, надежная проверка вхождения ключевых меток без обрезки строк
+            if any(tag in x for tag in ["РЕГИСТРАЦИЯ", "ПЕРЕИМЕНОВАНИЕ", "АВТО-ОБНОВЛЕНИЕ", "АВТО-УДАЛЕНИЕ", "АДМИН-ДЕЙСТВИЕ", "ЗАПРОС-СОЗДАН", "ЗАПРОС-УДАЛЕН"]):
+                system_logs.append(x)
+                
         for i, x in enumerate(system_logs):
             lines.append(f"{i+1}. {x}")
         if not system_logs: lines.append("Пусто")
@@ -57,7 +59,6 @@ def export_to_txt(clean_callback, user_id):
             lines.append(f"{i+1}. {x}")
         if not security_logs: lines.append("Пусто")
         
-    # Блок технической загрузки с оригинальными датами
     lines.append("")
     lines.append("======= ДЛЯ ЗАГРУЗКИ =======")
     lines.append("--- СТРОЙКА ---")
@@ -80,7 +81,7 @@ def import_from_txt(content):
         "cooldowns": current_data.get("cooldowns", {}),
         "stroyka": [],
         "laboratoriya": [],
-        "archive": current_data.get("archive", [])  # ФИКС: Сохраняем прошлую историю логов при импорте, а не зануляем её
+        "archive": current_data.get("archive", [])  
     }
     
     current_section = None
