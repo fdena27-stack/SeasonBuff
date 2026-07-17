@@ -46,9 +46,11 @@ def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 def generate_web_user_id(username, password):
-    """Генерирует уникальный цифровой ID на основе связки Ник + Пароль (аналог Telegram ID)"""
+    """ФИКС: Стабильная генерация ID через MD5, которая НЕ меняется при перезапусках сервера"""
     combined = f"{username.lower().strip()}:{password}"
-    return abs(hash(combined)) % (10**8)
+    hash_object = hashlib.md5(combined.encode('utf-8'))
+    # Переводим первые 8 символов хэша в числовой формат, гарантируя уникальное 8-значное число
+    return int(hash_object.hexdigest()[:8], 16) % (10**8)
 
 def sync_web_user_id_by_name(user_id, char_name):
     """Автоматически привязывает сгенерированный веб-ID к загруженным из файла баффам, заменяя 0"""
