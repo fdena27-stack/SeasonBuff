@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from storage import load_lists, save_lists
 
 def clean_expired_buffs():
-    """Проверяет 24 часа без изменений, отнимает дни и удаляет баффы <= 7 дней"""
+    """Проверяет 24 часа без изменений, отнимает дни и удаляет баффы СТРОГО когда duration_days <= 7"""
     data = load_lists()
     updated = False
     now = datetime.now()
@@ -26,11 +26,8 @@ def clean_expired_buffs():
                 item["last_updated"] = (last_updated_date + timedelta(days=days_to_subtract)).isoformat()
                 updated = True
             
-            created_date = datetime.fromisoformat(item["created_at"])
-            end_date = created_date + timedelta(days=item["duration_days"])
-            days_left = (end_date - now).days + 1
-            
-            if days_left > 7 and item["duration_days"] > 7:
+            # ФИКС: Проверка идет СТРОГО по duration_days, защищая от сбоев дат при импорте файлов
+            if item["duration_days"] > 7:
                 valid_buffs.append(item)
             else:
                 del_log = f"[{time_stamp}] АВТО-УДАЛЕНИЕ: Запрос [{item['user_name']}] в {cat_title} удален (Оставалось: {item['duration_days']} дн.)"
@@ -46,10 +43,9 @@ def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 def generate_web_user_id(username, password):
-    """ФИКС: Стабильная генерация ID через MD5, которая НЕ меняется при перезапусках сервера"""
+    """Стабильная генерация ID через MD5, которая НЕ меняется при перезапусках сервера"""
     combined = f"{username.lower().strip()}:{password}"
     hash_object = hashlib.md5(combined.encode('utf-8'))
-    # Переводим первые 8 символов хэша в числовой формат, гарантируя уникальное 8-значное число
     return int(hash_object.hexdigest()[:8], 16) % (10**8)
 
 def sync_web_user_id_by_name(user_id, char_name):
