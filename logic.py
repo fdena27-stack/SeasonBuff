@@ -15,7 +15,17 @@ def clean_expired_buffs():
         
         for item in data[category]:
             last_updated_date = datetime.fromisoformat(item["last_updated"])
-            hours_passed = (now - last_updated_date).total_seconds() / 3600
+            
+            # Считаем чистую разницу в секундах
+            time_difference = now - last_updated_date
+            hours_passed = time_difference.total_seconds() / 3600
+            
+            # ЗАЩИТА: Если разница отрицательная (из-за часовых поясов бэкапа) — сбрасываем в 0
+            if hours_passed < 0:
+                hours_passed = 0
+                item["last_updated"] = now.isoformat()
+                updated = True
+                
             days_to_subtract = int(hours_passed // 24)
             
             if days_to_subtract > 0:
@@ -26,7 +36,7 @@ def clean_expired_buffs():
                 item["last_updated"] = (last_updated_date + timedelta(days=days_to_subtract)).isoformat()
                 updated = True
             
-            # ФИКС: Проверка идет СТРОГО по duration_days, защищая от сбоев дат при импорте файлов
+            # Проверка идет СТРОГО по duration_days, защищая от сбоев дат при импорте файлов
             if item["duration_days"] > 7:
                 valid_buffs.append(item)
             else:
