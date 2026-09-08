@@ -1,5 +1,5 @@
 def export_to_txt(data):
-    """Превращает JSON-данные в читаемый текст для скачивания"""
+    """Превращает JSON-данные в читаемый текст"""
     lines = []
     
     for category in ["stroyka", "laboratoriya"]:
